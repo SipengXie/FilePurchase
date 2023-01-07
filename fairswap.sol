@@ -1,5 +1,10 @@
 pragma solidity ^0.8.17;
-
+// 考虑使该合约成为一个平台，其中每一个文件有对应的sender[fileRoot]，
+// 对于每一个文件我们先考虑同时只有一个交换，对应接收者为receiver[fileRoot]，如果支持多个交换则是考虑receiver[fileRoot][i]
+// 对应的keyCommit[fileRoot]，多个交换则是keyCommit[fileRoot][i]
+// phase[fileRoot]，多个则是phase[fileRoot][i]
+// 要求检查msg.sender == receive[fileRoot]([i])
+// 如果同时只有一个交换，则应当在finshied stage后设置receiver[fileRoot] = NULL
 contract fileSale {
     uint256 constant depth = 2; // depth of merkel tree = log2(n)
     uint256 constant length = 1; // length of each file chunk: length * 32bytes
