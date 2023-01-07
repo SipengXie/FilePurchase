@@ -5,6 +5,7 @@ pragma solidity ^0.8.17;
 // phase[fileRoot]，多个则是phase[fileRoot][i]
 // 要求检查msg.sender == receive[fileRoot]([i])
 // 如果同时只有一个交换，则应当在finshied stage后设置receiver[fileRoot] = NULL
+// 为了防止receiver恶意complain about fileRoot，需要有一个haveFile[fileRoot]进行标记，并且receiver == receive[fileRoot] == msg.sender
 contract fileSale {
     uint256 constant depth = 2; // depth of merkel tree = log2(n)
     uint256 constant length = 1; // length of each file chunk: length * 32bytes
