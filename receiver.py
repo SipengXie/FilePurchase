@@ -1,7 +1,7 @@
 from web3 import Web3
 from typing import List
 from merkel import MerkelTree, Node
-
+from fileChunk import Chunk
 def bxor(b1, b2): # use xor for bytes
     result = b""
     for b1, b2 in zip(b1, b2):
@@ -12,64 +12,107 @@ class Receiver:
     length : int = 1 # 
     n : int #
     key : int #
-    ciphertext : List[bytes] #
-    plaintext : List[bytes] #
-    file : List[bytes] #
-    mTree_f : MerkelTree
-    mTree_c : MerkelTree
+    encrypted_chunks : List[Chunk]
+    encrypted_plain_tree_path : List[bytes]
+    cipher_tree : MerkelTree
 
-    def __init__(self, ciphertext, n):
-        self.ciphertext = ciphertext
-        self.mTree_c = MerkelTree(ciphertext)
+    chunks : List[Chunk]
+    plain_tree_path : List[bytes]
+    
+    def __init__(self, n, length):
         self.n = n
+        self.length = length
+
+    def receive_cipherText(self, encrypted_chunks : List[Chunk], encrypted_plain_tree_path : List[bytes]):
+        self.encrypted_chunks = encrypted_chunks
+        self.encrypted_plain_tree_path = encrypted_plain_tree_path
+
+        input_for_cipher_tree : List[bytes] = [chunk.get_hash() for chunk in encrypted_chunks] + encrypted_plain_tree_path
+        self.cipher_tree = MerkelTree(input_for_cipher_tree)
     
     def verify_ciphertext(self, cipherRoot):
-        return cipherRoot == self.mTree_c.getRootHash()
+        return cipherRoot == self.cipher_tree.getRootHash()
     
     def accept(self):
-        ciphertext_prime = [bxor(i, b'1') for i in self.ciphertext]
-        mTree_c_prime = MerkelTree(ciphertext_prime) 
-        return mTree_c_prime.getRootHash()  # H(C + 1)
+
+        encrypted_chunks_prime = [chunk.xor_one() for chunk in self.encrypted_chunks]
+        encrypted_plain_tree_path_prime = [bxor(element,b'1') for element in self.encrypted_plain_tree_path]
+
+        input_for_cipher_tree_prime : List[bytes] = [chunk.get_hash() for chunk in encrypted_chunks_prime] + encrypted_plain_tree_path_prime
+
+        cipher_tree_prime = MerkelTree(input_for_cipher_tree_prime)
+
+        return cipher_tree_prime.getRootHash()  # H(C + 1)
 
     def decrypt(self, key):
         self.key = key
-        self.plaintext = [bxor(Node.hash_2(i,key),self.ciphertext[i]) for i in range(0,len(self.ciphertext))]
-        self.file = self.plaintext[:self.n]
-        self.mTree_f = MerkelTree(self.file)
+
+        # generate plain text : chunks
+        chunks : List[Chunk] = []
+        for i in range (self.n):
+            chunk_contents : List[bytes] = []
+            for j in range (self.length):
+                shard = bxor(Node.hash_int_and_bytes(i * self.length + j, key), self.encrypted_chunks[i].contents[j])
+                chunk_contents.append(shard)
+
+            chunk = Chunk(chunk_contents)
+            
+            chunks.append(chunk)
+        
+        # generate plain tree path
+        plain_tree_path : List[bytes] = []
+        for i in range (len(self.encrypted_plain_tree_path)):
+            element = bxor(Node.hash_int_and_bytes(self.n * self.length + i, key), self.encrypted_plain_tree_path[i])
+            plain_tree_path.append(element)
+        
+        self.chunks = chunks
+        self.plain_tree_path = plain_tree_path
     
     def verify_fileRoot(self, fileRoot):
-        return self.plaintext[-1] == fileRoot
+        return self.plain_tree_path[-1] == fileRoot
 
-    def complain_fileRoot(self):
-        index = len(self.ciphertext) - 1
-        proof = self.mTree_c.get_siblings(index)
-        return (self.ciphertext[index], proof)
+    def complain_about_fileRoot(self):
+        input_for_cipher_tree = self.cipher_tree.leaves
+        index = len(input_for_cipher_tree) - 1
+        proof = self.cipher_tree.get_siblings(index)
+        return (input_for_cipher_tree[index], proof)
     
-    def complain_file(self, in_1, in_2, out):
-        Zin_1 = [self.ciphertext[in_1]]
-        Zin_2 = [self.ciphertext[in_2]]
-        Zout = self.ciphertext[out]
-        proofIn_1 = self.mTree_c.get_siblings(in_1)
-        proofIn_2 = self.mTree_c.get_siblings(in_2)
-        proofOut = self.mTree_c.get_siblings(out)
+    def complain_about_chunk(self, in_1, in_2, out):
+        Zin_1 = self.encrypted_chunks[in_1].contents # bytes32[]
+        Zin_2 = self.encrypted_chunks[in_2].contents # bytes32[]
+        Zout = self.cipher_tree.leaves[out] # bytes32
+
+        proofIn_1 = self.cipher_tree.get_siblings(in_1) # 在合约里Zin_1 Zin_2会被keccack256(abi.encodePacked(·))
+        proofIn_2 = self.cipher_tree.get_siblings(in_2)
+        proofOut = self.cipher_tree.get_siblings(out)
+
         return (Zin_1,Zin_2,Zout,proofIn_1,proofIn_2,proofOut)
 
     def complain_node(self, in_1, in_2, out):
-        Zin_1 = self.ciphertext[in_1]
-        Zin_2 = self.ciphertext[in_2]
-        Zout = self.ciphertext[out]
-        proofIn_1 = self.mTree_c.get_siblings(in_1)
-        proofIn_2 = self.mTree_c.get_siblings(in_2)
-        proofOut = self.mTree_c.get_siblings(out)
+        input_for_cipher_tree = self.cipher_tree.leaves
+
+        Zin_1 = input_for_cipher_tree[in_1]
+        Zin_2 = input_for_cipher_tree[in_2]
+        Zout = input_for_cipher_tree[out]
+
+        proofIn_1 = self.cipher_tree.get_siblings(in_1)
+        proofIn_2 = self.cipher_tree.get_siblings(in_2)
+        proofOut = self.cipher_tree.get_siblings(out)
+
         return (Zin_1,Zin_2,Zout,proofIn_1,proofIn_2,proofOut)
 
     def search_first_incorrect(self): # [0,n) -> complain_file;[n,len(tree))->complain_node
-        #print(self.file)
-        my_whole_tree = self.mTree_f.flatten()
-        for i in range (0, len(my_whole_tree)):
-            if self.plaintext[i] != my_whole_tree[i]:
+
+        # first we check the path
+        plain_tree = MerkelTree(self.chunks)
+        my_path = plain_tree.flatten()
+        if len (my_path) != len(self.plain_tree_path):
+            raise Exception("Unmatched path length! my_path:" + len(my_path) + " expected" + len(self.plain_tree_path))
+        for i in range (0, len(my_path)):
+            if self.plain_tree_path[i] != my_path[i]:
                 return i
-        return len(my_whole_tree)
+
+        return len(my_path)
 
 def bytesToHexString(bs):
     return ''.join(['%02X' % b for b in bs])
@@ -83,21 +126,5 @@ def bytesToHexString(bs):
 ###
 
 if __name__ == "__main__":
-    receiver = Receiver([b"\xae\x0f\xb9y\xec\xd8\xd36rX\x1a\x0e\xfe\xc3\xafR'9\xf9\xea\xba\xbc\x19\xd1\xb3eWP\xae*h\x9f",           #A
-                         b'\x87\xd2\x10\x0b:]\xeb6\x895\r\xc2G\xa0V{\xb0\xd8kl\x96\x8bD2z\x1b\xe6\x84z\x04\\\x87',                  #B
-                         b'\x8e\x97F\x08\x13\xb5\xe3\xec\x9d\xe8\x9ah1_\xd4\xceq>\x94]\xf0\x01\xdcA\x7f`[\x1c\xcb\xa7W\x11',        #C 
-                         b"\xa0\x00\x18\xe0\x10\xb3'\x94^.\xc5\xce\x13\x18\xbb\x84\xb3^\x1di\x16\xdb\xf8\x94~{\xce^\xa1B\x14\xa0",  #D 
-                         b'p\x83\xa5\x88l\xc7I\x16EW!n\xc3\xb3\xd4\xdb\xd9q\x81\xcbK\x19}\tS\xfb\xd5g\xe5r\xa8\xfc',                #E
-                         b'\xc1\xf7\x10-\xf7\xd3\xe4\xb2\xc8\x1f\xcf<\x10\xa2c\x1d\xec\\b\x94\xd0\x1d\xd4\x14PMC\xe1\xc9D\x85s',    #F
-                         b'\xfc\x06\x05\xf1\x04(&\x14\xbd\x96\xc4\x1fg \xd6-\xb5[\xefz\xf0\x87k\xee\xd93h\xb1\x0b\x84\x8dI']        #G
-    ,4)
-    print("AcceptCommit=",bytesToHexString(receiver.accept()))
-    #print("H(H(C+1))=",bytesToHexString(Node.hash(receiver.accept())))
-    print(receiver.verify_ciphertext(bytearray.fromhex("43E49F77EE2D216AEFB25FE2885B9A6C1A068EB546C2645C97AF2A27AD85255A")))
-
-    E='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
-    KEY = bytearray.fromhex(E)
-    receiver.decrypt(KEY)
-    print(receiver.verify_fileRoot(bytearray.fromhex("5F509E99DB6F468DF1F245A28921C8BB3D53F8AA7CED8B2CAB75BDAC76F196A7")))
-    print(receiver.search_first_incorrect())
-
+    # TODO: Add test
+    print("1")

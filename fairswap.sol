@@ -1,19 +1,21 @@
 pragma solidity ^0.8.17;
+
 // 考虑使该合约成为一个平台，其中每一个文件有对应的sender[fileRoot]，
 // 对于每一个文件我们先考虑同时只有一个交换，对应接收者为receiver[fileRoot]，如果支持多个交换则是考虑receiver[fileRoot][i]
 // 对应的keyCommit[fileRoot]，多个交换则是keyCommit[fileRoot][i]
 // phase[fileRoot]，多个则是phase[fileRoot][i]
-// 要求检查msg.sender == receive[fileRoot]([i])
+// 要求检查msg.sender == receiver[fileRoot]([i])
 // 如果同时只有一个交换，则应当在finshied stage后设置receiver[fileRoot] = NULL
-// 为了防止receiver恶意complain about fileRoot，需要有一个haveFile[fileRoot]进行标记，并且receiver == receive[fileRoot] == msg.sender
+// 为了防止receiver恶意complain about fileRoot，需要有一个haveFile[fileRoot]进行标记，并且receiver == receiver[fileRoot] == msg.sender
+
 contract fileSale {
     uint256 constant depth = 2; // depth of merkel tree = log2(n)
     uint256 constant length = 1; // length of each file chunk: length * 32bytes
     uint256 constant n = 4; // total number of file chunk
     uint256 constant cipherN = 7; // totoal number of cipher chunk
     bytes32 constant fileRoot = 0x5F509E99DB6F468DF1F245A28921C8BB3D53F8AA7CED8B2CAB75BDAC76F196A7; // Cid
-    bytes32 constant keyCommit = 0x0322B47A386843FE8F1ACF782945C3BB624DF06ECD785A327F87406B9B95D8B9; // H(Key)
-    bytes32 constant cipherRoot = 0x43E49F77EE2D216AEFB25FE2885B9A6C1A068EB546C2645C97AF2A27AD85255A; // H(C)
+    bytes32 constant keyCommit = 0x0322B47A386843FE8F1ACF782945C3BB624DF06ECD785A327F87406B9B95D8B9; // H(Key)(
+    bytes32 constant cipherRoot = 0x43E49F77EE2D216AEFB25FE2885B9A6C1A068EB546C2645C97AF2A27AD85255A; // H(C)=MerkelRoot(C[...])
     bytes32 constant cipherPrimeCommit = 0x1DC94447293FC19DE74FACB65D26680233C1FDF5DB8FA594B6C0411372CCDC2C; //H(H(C+1))
 
 
@@ -69,9 +71,10 @@ contract fileSale {
     }
 
     // function accept
+    // acceptCommit = H(C+1)
     function accept(bytes32 acceptCommit) public payable allowed(receiver, stage.initialized) {
         require(msg.value >= price);
-        require(cipherPrimeCommit == keccak256(abi.encodePacked(acceptCommit)));
+        require(cipherPrimeCommit == keccak256(abi.encodePacked(acceptCommit))); // =? H(H(C+1))
         nextStage();
     }
 
@@ -108,11 +111,12 @@ contract fileSale {
         bytes32[length] calldata _Zin2,
         bytes32[depth]  calldata _proofZout,
         bytes32[depth]  calldata _proofZin
-    ) public allowed(receiver, stage.keyRevealed) {
+    ) public 
+    allowed(receiver, stage.keyRevealed) {
         require(vrfy(_indexOut, _Zout, _proofZout));
         bytes32 Xout = cryptSmall(_indexOut, _Zout);
 
-        require(vrfy(_indexIn, keccak256(abi.encodePacked(_Zin1)), _proofZin));
+        require(vrfy(_indexIn, keccak256(abi.encodePacked(_Zin1)), _proofZin)); // 密文树上明文都是chunk的哈希值 H(EA) H(EB) H(EC) H(ED)
         require(_proofZin[0] == keccak256(abi.encodePacked(_Zin2)));
 
         (uint256 st, uint256 nxt_st) = layer_start_calc(_indexIn);
@@ -188,7 +192,7 @@ contract fileSale {
         view
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(n + _index, key)) ^ _ciphertext;
+        return keccak256(abi.encodePacked(n + _index, key)) ^ _ciphertext; // n*(length-1)+index才能保证密钥无冲突
     }
 
     // function to verify Merkle Tree proofs
