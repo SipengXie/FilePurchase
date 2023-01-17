@@ -1,4 +1,3 @@
-from typing import List
 from merkel import Node
 
 def bxor(b1, b2): # use xor for bytes
@@ -9,19 +8,14 @@ def bxor(b1, b2): # use xor for bytes
 
 class Chunk:
     length : int
-    contents : List[bytes]
+    contents : list[bytes]
     rawContents : bytes
 
-    def __init__(self, contents: List[bytes]) :
+    def __init__(self, contents: list[bytes]) :
         self.length = len(contents)
         self.contents = contents
-        self.rawContents = ''.join(contents)
-
-    def __init__ (self):
-        self.length = 0
-        self.contents = []
-        self.rawContents = b''
-    
+        self.rawContents = b''.join(contents)
+  
     def get_hash(self):
         return Node.hash_bytes(self.rawContents)
 
@@ -36,3 +30,4 @@ class Chunk:
         for i in range (self.length):
             contents.append(bxor(self.contents[i], b'1'))
         return Chunk(contents)
+    

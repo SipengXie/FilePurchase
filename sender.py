@@ -15,9 +15,9 @@ class Sender:
     n : int # how many chunks
     key : bytes # a simple 32bytes long key
 
-    def __init__(self, chunks: List[Chunk], chunkLength : int, key : bytes):
+    def __init__(self, n : int, chunkLength : int, key : bytes):
         self.length = chunkLength
-        self.n = len(chunks)
+        self.n = n
         self.key = key
 
     def Encryption(self, chunks: List[Chunk]):
@@ -68,8 +68,8 @@ class Sender:
         cipher_commit = mTree_cipher.getRootHash() # we consider this to be H(C)
         cipher_commit_prime = mTree_cipher_prime.getRootHash() # we consider this to be H(C+1)
 
-        # return {Echunks + Epath} = C, H(C), H(H(C+1))
-        return encrypted_chunks, encrypted_plain_tree_path, cipher_commit, Node.hash_bytes(cipher_commit_prime)
+        # return fileRoot, {Echunks + Epath} = C, H(C), H(H(C+1))
+        return plain_tree_path[-1], encrypted_chunks, encrypted_plain_tree_path, cipher_commit, Node.hash_bytes(cipher_commit_prime)
 
 
     def deployContract():
@@ -87,5 +87,35 @@ def bytesToHexString(bs):
     return ''.join(['%02X' % b for b in bs])
 
 if __name__ == "__main__" :
-   print(0)
-   # TODO: add test
+#   print(0)
+    file_0 = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    file_1 = b'\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11'
+    file_2 = b'\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22\x22'
+    file_3 = b'\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33'
+    file_4 = b'\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44\x44'
+    file_5 = b'\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55\x55'
+    file_6 = b'\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66\x66'
+    file_7 = b'\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77\x77'
+    key    = b'\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88'
+    chunk_1 = Chunk([file_0, file_1])
+    chunk_2 = Chunk([file_2, file_3])
+    chunk_3 = Chunk([file_4, file_5])
+    chunk_4 = Chunk([file_6, file_7])
+
+    test_sender = Sender(4, 2, key)
+    fileRoot, cipherChunks, cipherPath, h_C, H_H_C_plus_one = test_sender.Encryption([chunk_1, chunk_2, chunk_3, chunk_4])
+    
+    print("fileRoot=",fileRoot.hex())
+
+    print("CipherChunks:")
+    for i in range(0,len(cipherChunks)):
+        contents = cipherChunks[i].contents
+        for j in range(0, len(contents)):
+            contents[j] = contents[j].hex()
+        print(contents)
+
+    for i in range (0, len(cipherPath)):
+        cipherPath[i] = cipherPath[i].hex()
+    print("CipherPath = ", cipherPath)
+    print("H(C) = ", h_C.hex())
+    print("H(H(C+1)) = ", H_H_C_plus_one.hex())

@@ -116,7 +116,7 @@ contract fileSale {
         require(vrfy(_indexOut, _Zout, _proofZout));
         bytes32 Xout = cryptSmall(_indexOut, _Zout);
 
-        require(vrfy(_indexIn, keccak256(abi.encodePacked(_Zin1)), _proofZin)); // 密文树上明文都是chunk的哈希值 H(EA) H(EB) H(EC) H(ED)
+        require(vrfy(_indexIn, keccak256(abi.encodePacked(_Zin1)), _proofZin)); // 密文树上明文都是chunk密文的哈希值 H(EA) H(EB) H(EC) H(ED)
         require(_proofZin[0] == keccak256(abi.encodePacked(_Zin2)));
 
         (uint256 st, uint256 nxt_st) = layer_start_calc(_indexIn);

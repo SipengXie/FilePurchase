@@ -75,25 +75,26 @@ class Receiver:
         input_for_cipher_tree = self.cipher_tree.leaves
         index = len(input_for_cipher_tree) - 1
         proof = self.cipher_tree.get_siblings(index)
-        return (input_for_cipher_tree[index], proof)
+        return input_for_cipher_tree[index].value, proof
     
-    def complain_about_chunk(self, in_1, in_2, out):
+    def complain_about_chunk(self, in_1: int, in_2: int, out: int):
+        # 在合约里Zin_1 Zin_2会被keccack256(abi.encodePacked(·))
         Zin_1 = self.encrypted_chunks[in_1].contents # bytes32[]
         Zin_2 = self.encrypted_chunks[in_2].contents # bytes32[]
-        Zout = self.cipher_tree.leaves[out] # bytes32
+        Zout = self.cipher_tree.leaves[out].value # bytes32
 
-        proofIn_1 = self.cipher_tree.get_siblings(in_1) # 在合约里Zin_1 Zin_2会被keccack256(abi.encodePacked(·))
+        proofIn_1 = self.cipher_tree.get_siblings(in_1) 
         proofIn_2 = self.cipher_tree.get_siblings(in_2)
         proofOut = self.cipher_tree.get_siblings(out)
 
-        return (Zin_1,Zin_2,Zout,proofIn_1,proofIn_2,proofOut)
+        return (Zin_1, Zin_2, Zout, proofIn_1, proofIn_2, proofOut)
 
-    def complain_node(self, in_1, in_2, out):
+    def complain_node(self, in_1 : int, in_2 : int, out : int):
         input_for_cipher_tree = self.cipher_tree.leaves
 
-        Zin_1 = input_for_cipher_tree[in_1]
-        Zin_2 = input_for_cipher_tree[in_2]
-        Zout = input_for_cipher_tree[out]
+        Zin_1 = input_for_cipher_tree[in_1].value # bytes32
+        Zin_2 = input_for_cipher_tree[in_2].value # bytes32
+        Zout = input_for_cipher_tree[out].value  # bytes32
 
         proofIn_1 = self.cipher_tree.get_siblings(in_1)
         proofIn_2 = self.cipher_tree.get_siblings(in_2)
@@ -114,17 +115,61 @@ class Receiver:
 
         return len(my_path)
 
-def bytesToHexString(bs):
-    return ''.join(['%02X' % b for b in bs])
-
-###
-#      G
-#    /   \
-#   E     F
-#  / \   / \
-# A   B C   D 
-###
-
 if __name__ == "__main__":
     # TODO: Add test
-    print("1")
+    #print("1")
+    contentReceived_0 = [bytes.fromhex('75d7e4b7ec8defc4effb61d1d79a264119687ac721a7fe359af06d444ceaacee'), 
+                         bytes.fromhex('ff0322683be7f952abcf5017278541321e2d09c5acfd6d1d9f08f8dcd385a121')]
+    contentReceived_1 = [bytes.fromhex('b95483ecc4a911024479b5262da79884eda2098e0b21269ac3d274c66dc093fc'),
+                         bytes.fromhex('df71e3d821d03dc5c499337456d3d39853daa57a0891933027b1acf3c332ba50')]
+    contentReceived_2 = [bytes.fromhex('2f2f53a9eaaea0d3b9c41ef0338972de31f107457e2348cd34c8818c91d94e25'), 
+                         bytes.fromhex('b6a70786facf847075bb5080a876a11648806fdc2d7fc844346005dcf99c01df')]
+    contentReceived_3 = [bytes.fromhex('60110c6dfeabc37ed0fb9a7adcb55bfe3aec5dfb5e0fdba8bf03d824a5147da5'), 
+                         bytes.fromhex('969995a6a1eb7aef0691211ec544df758738882f73e059b027741e3435114ad1')]
+    
+    chunksReceived = [Chunk(contentReceived_0), Chunk(contentReceived_1), Chunk(contentReceived_2), Chunk(contentReceived_3)]
+    pathReceived =  [bytes.fromhex('0e0047f3afb37c013a6fa6e00051ac0d6581c9266bcf0bd8bd7b234907557ef0'), 
+                     bytes.fromhex('57ff7558523358c98036a3cd28ea71a3088f9f4a86852075305720aca2e3ad5e'), 
+                     bytes.fromhex('7e1f57ca2c5ef11bc537f39bbbb91ede58e324c32054d6fac50eb8bf8bc487ca')]
+
+    h_C_received = bytes.fromhex('3bcf26d41c5323147ed44cff30096643857e19d9c53e26badc388e11e2655735') # which is cipher root
+    H_H_C_plus_one_received = bytes.fromhex('a5c397b3fe4a364897fee5517a88472460d67240d8a43963a528970cad8cb0a0')
+
+    receiver = Receiver(4, 2)
+
+    receiver.receive_cipherText(chunksReceived, pathReceived)
+    receiver.verify_ciphertext(h_C_received)
+    H_C_plus_one = receiver.accept()
+
+    print("receiver's H(H(C+1)):",Node.hash_bytes(H_C_plus_one).hex())
+    print("sender's H(H(C+1)):", H_H_C_plus_one_received.hex())
+
+    key    = b'\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88\x88'
+    receiver.decrypt(key=key)
+
+    fileRoot = bytes.fromhex('8c1065b93751029e31b69574b5e3c2a9d2d7301d4dff760b3ef38da29e06d481')
+    print(receiver.verify_fileRoot(fileRoot))
+
+    print("testing complain about fileRoot")
+    Zm, Proof = receiver.complain_about_fileRoot()
+    print("Zm:", Zm)
+    print("Proof:", Proof)
+    print("Verify:", receiver.cipher_tree.verify(6, Zm, Proof, h_C_received))
+
+    print("testing complain about chunk")
+    Zin_1, Zin_2, Zout, proofIn_1, proofIn_2, proofOut = receiver.complain_about_chunk(in_1=0, in_2=1, out=4)
+    print("Zin_1:", Zin_1)
+    print("Zin_2:", Zin_2)
+    print("Zout:", Zout)
+    print("Verify Zin_1:", receiver.cipher_tree.verify(0, Node.hash_bytes(Zin_1[0]+Zin_1[1]), proofIn_1, h_C_received))
+    print("Verify Zin_2:", receiver.cipher_tree.verify(1, Node.hash_bytes(Zin_2[0]+Zin_2[1]), proofIn_2, h_C_received))
+    print("Verify Zout:", receiver.cipher_tree.verify(4, Zout, proofOut, h_C_received))
+    
+    print("testing complain about node")
+    Zin_1, Zin_2, Zout, proofIn_1, proofIn_2, proofOut = receiver.complain_node(in_1 = 4, in_2 = 5, out = 6)
+    print("Zin_1:", Zin_1)
+    print("Zin_2:", Zin_2)
+    print("Zout:", Zout)
+    print("Verify Zin_1:", receiver.cipher_tree.verify(4, Zin_1, proofIn_1, h_C_received))
+    print("Verify Zin_2:", receiver.cipher_tree.verify(5, Zin_2, proofIn_2, h_C_received))
+    print("Verify Zout:", receiver.cipher_tree.verify(6, Zout, proofOut, h_C_received))

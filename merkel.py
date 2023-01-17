@@ -90,7 +90,7 @@ class MerkelTree:
                 cur_hash = Node.hash_bytes(cur_hash + siblings[i])
         return cur_hash == root_hash
 
-    def flatten(self): # flat the tree without giving leaves in return; only returns path
+    def flatten(self) -> List[bytes]: # flat the tree without giving leaves in return; only returns path
         nodes = self.leaves
         ret = []
         nodes_length = len(nodes)
@@ -109,7 +109,7 @@ class MerkelTree:
     对应index个的上一层开始、这一层开始以及下一层开始
     """
     def get_three_start(self, index):
-        last_st=cur_st=nxt_st=0
+        last_st = cur_st = nxt_st=0
         cur_node_num=self.n
         while (cur_node_num > 1):
             if (cur_node_num & 1):
