@@ -13,10 +13,10 @@ contract fileSale {
     uint256 constant length = 1; // length of each file chunk: length * 32bytes
     uint256 constant n = 4; // total number of file chunk
     uint256 constant cipherN = 7; // totoal number of cipher chunk
-    bytes32 constant fileRoot = 0x5F509E99DB6F468DF1F245A28921C8BB3D53F8AA7CED8B2CAB75BDAC76F196A7; // Cid
-    bytes32 constant keyCommit = 0x0322B47A386843FE8F1ACF782945C3BB624DF06ECD785A327F87406B9B95D8B9; // H(Key)(
-    bytes32 constant cipherRoot = 0x43E49F77EE2D216AEFB25FE2885B9A6C1A068EB546C2645C97AF2A27AD85255A; // H(C)=MerkelRoot(C[...])
-    bytes32 constant cipherPrimeCommit = 0x1DC94447293FC19DE74FACB65D26680233C1FDF5DB8FA594B6C0411372CCDC2C; //H(H(C+1))
+    bytes32 constant fileRoot = 0x8c1065b93751029e31b69574b5e3c2a9d2d7301d4dff760b3ef38da29e06d481; // Cid
+    bytes32 constant keyCommit = 0x477da6049253b9ab6fc310064424ab1ba5ae95b5118ca8b4fb5bcb496a4cc864; // H(Key)(
+    bytes32 constant cipherRoot = 0x3bcf26d41c5323147ed44cff30096643857e19d9c53e26badc388e11e2655735; // H(C)=MerkelRoot(C[...])
+    bytes32 constant cipherPrimeCommit = 0xa5c397b3fe4a364897fee5517a88472460d67240d8a43963a528970cad8cb0a0; //H(H(C+1))
 
 
     enum stage {

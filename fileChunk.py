@@ -1,5 +1,5 @@
 from merkel import Node
-
+from typing import List
 def bxor(b1, b2): # use xor for bytes
     result = b""
     for b1, b2 in zip(b1, b2):
@@ -8,10 +8,10 @@ def bxor(b1, b2): # use xor for bytes
 
 class Chunk:
     length : int
-    contents : list[bytes]
+    contents : List[bytes]
     rawContents : bytes
 
-    def __init__(self, contents: list[bytes]) :
+    def __init__(self, contents: List[bytes]) :
         self.length = len(contents)
         self.contents = contents
         self.rawContents = b''.join(contents)

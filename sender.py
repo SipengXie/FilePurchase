@@ -106,6 +106,7 @@ if __name__ == "__main__" :
     fileRoot, cipherChunks, cipherPath, h_C, H_H_C_plus_one = test_sender.Encryption([chunk_1, chunk_2, chunk_3, chunk_4])
     
     print("fileRoot=",fileRoot.hex())
+    print("keyCommit=",Node.hash_bytes(key).hex())
 
     print("CipherChunks:")
     for i in range(0,len(cipherChunks)):
