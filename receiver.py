@@ -141,6 +141,8 @@ if __name__ == "__main__":
     receiver.verify_ciphertext(h_C_received)
     H_C_plus_one = receiver.accept()
 
+    print("receiver's H(C+1):", H_C_plus_one.hex())
+
     print("receiver's H(H(C+1)):",Node.hash_bytes(H_C_plus_one).hex())
     print("sender's H(H(C+1)):", H_H_C_plus_one_received.hex())
 

@@ -42,6 +42,10 @@ contract fileSale {
         _;
     }
 
+    function printStage() public view returns (uint8){
+        return uint8(phase);
+    }
+
     // go to next phase
     function nextStage() internal {
         phase = stage(uint256(phase) + 1);
