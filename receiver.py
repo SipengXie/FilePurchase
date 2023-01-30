@@ -2,6 +2,13 @@ from web3 import Web3
 from typing import List
 from merkel import MerkelTree, Node
 from fileChunk import Chunk
+
+def toBytes(proof):
+    for i in range(0, len(proof)):
+        if (type(proof[i]) != bytes):
+            proof[i] = bytes(proof[i])
+    return proof
+
 def bxor(b1, b2): # use xor for bytes
     result = b""
     for b1, b2 in zip(b1, b2):
@@ -75,6 +82,7 @@ class Receiver:
         input_for_cipher_tree = self.cipher_tree.leaves
         index = len(input_for_cipher_tree) - 1
         proof = self.cipher_tree.get_siblings(index)
+        proof = toBytes(proof)
         return input_for_cipher_tree[index].value, proof
     
     def complain_about_chunk(self, in_1: int, in_2: int, out: int):
@@ -86,6 +94,10 @@ class Receiver:
         proofIn_1 = self.cipher_tree.get_siblings(in_1) 
         proofIn_2 = self.cipher_tree.get_siblings(in_2)
         proofOut = self.cipher_tree.get_siblings(out)
+
+        proofIn_1 = toBytes(proofIn_1)
+        proofIn_2 = toBytes(proofIn_2)
+        proofOut = toBytes(proofOut)
 
         return (Zin_1, Zin_2, Zout, proofIn_1, proofIn_2, proofOut)
 
@@ -99,6 +111,10 @@ class Receiver:
         proofIn_1 = self.cipher_tree.get_siblings(in_1)
         proofIn_2 = self.cipher_tree.get_siblings(in_2)
         proofOut = self.cipher_tree.get_siblings(out)
+
+        proofIn_1 = toBytes(proofIn_1)
+        proofIn_2 = toBytes(proofIn_2)
+        proofOut = toBytes(proofOut)
 
         return (Zin_1,Zin_2,Zout,proofIn_1,proofIn_2,proofOut)
 
@@ -163,6 +179,8 @@ if __name__ == "__main__":
     print("Zin_1:", Zin_1)
     print("Zin_2:", Zin_2)
     print("Zout:", Zout)
+    print("proofOut=", proofOut)
+    print("proofIn_1=",proofIn_1)
     print("Verify Zin_1:", receiver.cipher_tree.verify(0, Node.hash_bytes(Zin_1[0]+Zin_1[1]), proofIn_1, h_C_received))
     print("Verify Zin_2:", receiver.cipher_tree.verify(1, Node.hash_bytes(Zin_2[0]+Zin_2[1]), proofIn_2, h_C_received))
     print("Verify Zout:", receiver.cipher_tree.verify(4, Zout, proofOut, h_C_received))
@@ -172,6 +190,8 @@ if __name__ == "__main__":
     print("Zin_1:", Zin_1)
     print("Zin_2:", Zin_2)
     print("Zout:", Zout)
+    print("proofOut=", proofOut)
+    print("proofIn=", proofIn_1)
     print("Verify Zin_1:", receiver.cipher_tree.verify(4, Zin_1, proofIn_1, h_C_received))
     print("Verify Zin_2:", receiver.cipher_tree.verify(5, Zin_2, proofIn_2, h_C_received))
     print("Verify Zout:", receiver.cipher_tree.verify(6, Zout, proofOut, h_C_received))

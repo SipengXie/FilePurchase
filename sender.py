@@ -70,17 +70,10 @@ class Sender:
 
         # return fileRoot, {Echunks + Epath} = C, H(C), H(H(C+1))
         return plain_tree_path[-1], encrypted_chunks, encrypted_plain_tree_path, cipher_commit, Node.hash_bytes(cipher_commit_prime)
-
-
-    def deployContract():
-        return True
-    
+  
     # accepteCommmit = H(C+1), cipher_commit_prime should be H(H(C+1)) note this is different from the Encryption() method
     def verifyAcceptCommit(self, acceptCommit, cipher_commit_prime): 
         return Node.hash_bytes(acceptCommit) == cipher_commit_prime
-
-    def revealKey():
-        return True
 
 
 def bytesToHexString(bs):

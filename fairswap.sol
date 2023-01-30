@@ -9,8 +9,8 @@ pragma solidity ^0.8.17;
 // 为了防止receiver恶意complain about fileRoot，需要有一个haveFile[fileRoot]进行标记，并且receiver == receiver[fileRoot] == msg.sender
 
 contract fileSale {
-    uint256 constant depth = 2; // depth of merkel tree = log2(n)
-    uint256 constant length = 1; // length of each file chunk: length * 32bytes
+    uint256 constant depth = 3; // depth of merkel tree = log2(n)
+    uint256 constant length = 2; // length of each file chunk: length * 32bytes
     uint256 constant n = 4; // total number of file chunk
     uint256 constant cipherN = 7; // totoal number of cipher chunk
     bytes32 constant fileRoot = 0x8c1065b93751029e31b69574b5e3c2a9d2d7301d4dff760b3ef38da29e06d481; // Cid
@@ -33,11 +33,12 @@ contract fileSale {
     address payable public receiver;
     uint256 price; //XXXPriceAXXX; // in wei
     bytes32 public key;
-
+    
+    event ComplainFailed(address sender, string funcName);
     // function modifier to only allow calling the function in the right phase only from the correct party
     modifier allowed(address p, stage s) {
         require(phase == s);
-        require(block.timestamp < timeout);
+ //       require(block.timestamp < timeout);
         require(msg.sender == p);
         _;
     }
@@ -100,8 +101,10 @@ contract fileSale {
         allowed(receiver, stage.keyRevealed)
     {
         require(vrfy(cipherN - 1, _Zm, _proofZm)); // Zm appears in ciphertext
-        if (cryptSmall(cipherN - 1, _Zm) != fileRoot) { // decrypt Zm != fileRoot
+        if (cryptSmall(cipherN - 1, _Zm) != fileRoot) { // decrypt Zm != fileRoot  对应位置密文树第cipherN-1个叶子（从0开始）
             selfdestruct(receiver);
+        } else {
+            emit ComplainFailed(msg.sender, "complainAboutRoot");
         }
     }
 
@@ -133,6 +136,8 @@ contract fileSale {
             )
         {
             selfdestruct(receiver);
+        } else {
+            emit ComplainFailed(msg.sender, "complainAboutLeaf");
         }
     }
 
@@ -163,6 +168,8 @@ contract fileSale {
             )
         ) {
             selfdestruct(receiver);
+        } else {
+            emit ComplainFailed(msg.sender, "complainAboutNode");
         }
     }
 
@@ -196,7 +203,7 @@ contract fileSale {
         view
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(n + _index, key)) ^ _ciphertext; // n*(length-1)+index才能保证密钥无冲突
+        return keccak256(abi.encodePacked(n * (length-1) + _index, key)) ^ _ciphertext; 
     }
 
     // function to verify Merkle Tree proofs
