@@ -1,0 +1,12 @@
+n = 33554432 length = 1
+n = 16777216 length = 2
+n = 8388608 length = 4
+n = 4194304 length = 8
+n = 2097152 length = 16
+n = 1048576 length = 32
+n = 524288 length = 64
+n = 262144 length = 128
+n = 131072 length = 256
+n = 65536 length = 512
+n = 32768 length = 1024
+n = 16384 length = 2048

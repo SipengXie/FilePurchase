@@ -9,14 +9,15 @@ pragma solidity ^0.8.17;
 // 为了防止receiver恶意complain about fileRoot，需要有一个haveFile[fileRoot]进行标记，并且receiver == receiver[fileRoot] == msg.sender
 
 contract fileSale {
-    uint256 constant depth = 3; // depth of merkel tree = log2(n)
-    uint256 constant length = 2; // length of each file chunk: length * 32bytes
-    uint256 constant n = 4; // total number of file chunk
-    uint256 constant cipherN = 7; // totoal number of cipher chunk
-    bytes32 constant fileRoot = 0x8c1065b93751029e31b69574b5e3c2a9d2d7301d4dff760b3ef38da29e06d481; // Cid
+    uint256 constant depth = 24; // depth of merkel tree = log2(n) + 1
+    uint256 constant length = 4; // length of each file chunk: length * 32bytes
+    uint256 constant n = 8388608; // total number of file chunk
+    uint256 constant cipherN = 16777215; // totoal number of cipher chunk if n = 2^m then cipherN = 2*n - 1
     bytes32 constant keyCommit = 0x477da6049253b9ab6fc310064424ab1ba5ae95b5118ca8b4fb5bcb496a4cc864; // H(Key)(
-    bytes32 constant cipherRoot = 0x3bcf26d41c5323147ed44cff30096643857e19d9c53e26badc388e11e2655735; // H(C)=MerkelRoot(C[...])
-    bytes32 constant cipherPrimeCommit = 0xa5c397b3fe4a364897fee5517a88472460d67240d8a43963a528970cad8cb0a0; //H(H(C+1))
+
+    bytes32 constant fileRoot = 0x689d9108a836ba500ab905b58ca73a220485a97f9245ff31cb145efa2823e8b4; // Cid
+    bytes32 constant cipherRoot = 0x9ed869fabedcc4f2cdcbe523f1401894bd879f657779ec81546d7e9698f9663f; // H(C)=MerkelRoot(C[...])
+    bytes32 constant cipherPrimeCommit = 0x4491a3938631a6b4c68fa6e9e9ca8e9617d5289393dc9c86c07435c907e898c3; //H(H(C+1))
 
 
     enum stage {

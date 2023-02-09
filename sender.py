@@ -1,4 +1,4 @@
-from web3 import Web3
+import time
 from typing import List
 from merkel import MerkelTree, Node
 from fileChunk import Chunk
@@ -20,12 +20,15 @@ class Sender:
         self.n = n
         self.key = key
 
+    # cannot be used in big file encryption!
     def Encryption(self, chunks: List[Chunk]):
+
         # do encryption for plaintext;
         # meanwhile generate C+1=cipher prime
         encrypted_chunks : List[Chunk] = [] # cipher
         encrypted_chunks_prime : List[Chunk] = [] # cipher prime
-        for i in range (self.n):
+        for i in range (0, self.n):
+            print("Encrypting No.{n} Chunk".format(n = i))
             encrypted_chunk_contents : List[bytes] = []
 
             for j in range (self.length):
@@ -37,9 +40,15 @@ class Sender:
             encrypted_chunk_prime = encrypted_chunk.xor_one()
 
             encrypted_chunks.append(encrypted_chunk)
-            encrypted_chunks_prime.append(encrypted_chunk_prime)
+            encrypted_chunks_prime.append(encrypted_chunk_prime) # each chunk contains 2 contents, each content contains 1 byte
 
+
+        print("encrypted_chunks_prime=")
+        for chunk in encrypted_chunks_prime:
+            print(chunk.contents)
         # generate plain tree
+        print("Making Plain Tree")
+        st = time.time()
         mTree_plain = MerkelTree(chunks)
         plain_tree_path = mTree_plain.flatten()
 
@@ -47,7 +56,7 @@ class Sender:
         encrypted_plain_tree_path : List[bytes] = []
         encrypted_plain_tree_path_prime : List[bytes] = []
 
-        for i in range (len(plain_tree_path)):
+        for i in range (0, len(plain_tree_path)):
             encrypted_element = bxor(Node.hash_int_and_bytes(self.n * self.length + i, self.key), plain_tree_path[i])
             encrypted_plain_tree_path.append(encrypted_element)
             encrypted_plain_tree_path_prime.append(bxor(encrypted_element,b'1'))
@@ -67,13 +76,54 @@ class Sender:
         # cipherText = [element.rawContents for element in encrypted_chunks] + encrypted_plain_tree_path
         cipher_commit = mTree_cipher.getRootHash() # we consider this to be H(C)
         cipher_commit_prime = mTree_cipher_prime.getRootHash() # we consider this to be H(C+1)
-
+        ed = time.time()
         # return fileRoot, {Echunks + Epath} = C, H(C), H(H(C+1))
+        print("Encoding Time =",ed-st)
         return plain_tree_path[-1], encrypted_chunks, encrypted_plain_tree_path, cipher_commit, Node.hash_bytes(cipher_commit_prime)
   
     # accepteCommmit = H(C+1), cipher_commit_prime should be H(H(C+1)) note this is different from the Encryption() method
     def verifyAcceptCommit(self, acceptCommit, cipher_commit_prime): 
         return Node.hash_bytes(acceptCommit) == cipher_commit_prime
+
+    # work with encrypted file, provided chunklized cipher and cipher prime
+    def workWithEncryptedFile(self, plain_chunks : List[Chunk], encrypted_chunks : List[Chunk], encrypted_chunks_prime : List[Chunk]):
+        print("Making Plain Tree")
+        time_counter = 0 # tree building
+        func_st = time.time() # func time
+        mTree_plain = MerkelTree(plain_chunks)
+        time_counter += time.time()-func_st
+        plain_tree_path = mTree_plain.flatten()
+
+        encrypted_tree_path : List[bytes] = []
+        encrypted_tree_path_prime : List[bytes] = []
+        
+        for i in range (0, len(plain_tree_path)):
+            encrypted_element = bxor(Node.hash_int_and_bytes(self.n * self.length + i, self.key), plain_tree_path[i])
+            encrypted_tree_path.append(encrypted_element)
+            encrypted_tree_path_prime.append(bxor(encrypted_element,b'1'))
+
+        # generate cipher tree
+        input_for_cipher_tree : List[bytes] = [chunk.get_hash() for chunk in encrypted_chunks] + encrypted_tree_path
+
+        # generate cipher prime tree
+        input_for_cipher_tree_prime : List[bytes] = [chunk.get_hash() for chunk in encrypted_chunks_prime] + encrypted_tree_path_prime
+
+        st = time.time()
+        mTree_cipher = MerkelTree(input_for_cipher_tree)
+        mTree_cipher_prime = MerkelTree(input_for_cipher_tree_prime)
+        time_counter += time.time() - st
+
+        # the real cipher text that will be transferred
+        # or we can do this: 
+        # cipherText = encrypted_chunks + encrypted_plain_tree_path
+        # cipherText = [element.rawContents for element in encrypted_chunks] + encrypted_plain_tree_path
+        cipher_commit = mTree_cipher.getRootHash() # we consider this to be H(C)
+        cipher_commit_prime = mTree_cipher_prime.getRootHash() # we consider this to be H(C+1)
+        func_ed = time.time()
+        # return fileRoot, {Echunks + Epath} = C, H(C), H(H(C+1)), H(C+1)
+        print("Function running time =", func_ed-func_st)
+        print("Tree Building Time =",time_counter)
+        return plain_tree_path[-1], encrypted_tree_path, cipher_commit, Node.hash_bytes(cipher_commit_prime), cipher_commit_prime
 
 
 def bytesToHexString(bs):

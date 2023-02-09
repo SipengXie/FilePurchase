@@ -56,9 +56,9 @@ class Receiver:
 
         # generate plain text : chunks
         chunks : List[Chunk] = []
-        for i in range (self.n):
+        for i in range (0, self.n):
             chunk_contents : List[bytes] = []
-            for j in range (self.length):
+            for j in range (0, self.length):
                 shard = bxor(Node.hash_int_and_bytes(i * self.length + j, key), self.encrypted_chunks[i].contents[j])
                 chunk_contents.append(shard)
 
@@ -68,11 +68,18 @@ class Receiver:
         
         # generate plain tree path
         plain_tree_path : List[bytes] = []
-        for i in range (len(self.encrypted_plain_tree_path)):
+        for i in range (0, len(self.encrypted_plain_tree_path)):
             element = bxor(Node.hash_int_and_bytes(self.n * self.length + i, key), self.encrypted_plain_tree_path[i])
             plain_tree_path.append(element)
         
         self.chunks = chunks
+        self.plain_tree_path = plain_tree_path
+
+    def decrypt_only_path(self, key):
+        plain_tree_path : List[bytes] = []
+        for i in range (0, len(self.encrypted_plain_tree_path)):
+            element = bxor(Node.hash_int_and_bytes(self.n * self.length + i, key), self.encrypted_plain_tree_path[i])
+            plain_tree_path.append(element)
         self.plain_tree_path = plain_tree_path
     
     def verify_fileRoot(self, fileRoot):
